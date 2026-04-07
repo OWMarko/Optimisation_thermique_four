@@ -33,10 +33,6 @@ Eigen::SparseMatrix<double> assa(int Nbpt, int Nbtri,
 void elim(Eigen::SparseMatrix<double>& Atotal, Eigen::VectorXd& belim, 
           const Eigen::VectorXi& Refneu, int Refdir, double Valdir);
 
-// 4. Assemblage du problème inverse
-void asst(int Nbpt, int Nbtri, const Maillage& m, 
-          Eigen::MatrixXd& Aopt, Eigen::VectorXd& bopt, 
-          const Eigen::VectorXd& TO, const Eigen::MatrixXd& Tres, double Tcui);
 
 // Dans include/utils_mef.hpp, ajoute cette ligne si elle n'y est pas :
 Eigen::VectorXd calculer_b_re(int Nbpt, int triangle_index, const Maillage& m);

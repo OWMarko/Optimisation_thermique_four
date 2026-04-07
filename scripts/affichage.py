@@ -4,77 +4,54 @@ matplotlib.use('Qt5Agg')
 import matplotlib.pyplot as plt
 import matplotlib.tri as tri
 import os
+import numpy as np
 
-# 1. Vérification du dossier de destination
-dossier_img = '../img'
-if not os.path.exists(dossier_img):
-    os.makedirs(dossier_img)
+if not os.path.exists('../img'): os.makedirs('../img')
 
-# 2. Lecture des données exportées par le C++
-print("-> Lecture de l'ensemble des données...")
-df_T0   = pd.read_csv('../data/noeuds_T0.csv')      # Fig 11.4 
-df_Tdir = pd.read_csv('../data/noeuds_T_direct.csv')# Fig 11.5 (Problème direct)
-df_Tk   = pd.read_csv('../data/noeuds_Tk_1.csv')    # Fig 11.6 
-df_Topt = pd.read_csv('../data/noeuds_T_opt.csv')   # Fig 11.7 / 11.8 
-triangles = pd.read_csv('../data/triangles.csv')    # Connectivité 
+# 1. Lecture des données (Assure-toi que le C++ exporte bien ces deux fichiers)
+print("-> Lecture des données...")
+df_T0      = pd.read_csv('../data/noeuds_T0.csv')
+df_Tdir    = pd.read_csv('../data/noeuds_T_direct.csv')
+df_Tk      = pd.read_csv('../data/noeuds_Tk_1.csv')
+df_Tbrut   = pd.read_csv('../data/noeuds_T_opt_brut.csv') # Sans pénalité
+df_Treg    = pd.read_csv('../data/noeuds_T_opt_reg.csv')  # Avec pénalité
+df_l       = pd.read_csv('../data/l_curve.csv')
+triangles  = pd.read_csv('../data/triangles.csv')
 
-# Vérification cohérence des données
-print(f"   Nœuds T0: {len(df_T0)}, Triangles: {len(triangles)}, Nœuds T_opt: {len(df_Topt)}")
-
-# 3. Création de la triangulation commune
 maillage = tri.Triangulation(df_T0['x'], df_T0['y'], triangles.values)
 
-# 4. Création d'une figure 2x3 (pour accueillir 5 graphiques)
-fig = plt.figure(figsize=(22, 12)) # Légèrement élargie pour la 3ème colonne
-plt.suptitle("Synthèse du Projet : Optimisation Thermique du Four", fontsize=16, fontweight='bold')
+fig = plt.figure(figsize=(22, 11))
+plt.suptitle("Analyse Comparative : Optimisation avec et sans Régularisation", fontsize=16, fontweight='bold')
 
-# --- FIG 11.4 : T0 (Base thermique) ---
-ax1 = fig.add_subplot(231, projection='3d')
-surf1 = ax1.plot_trisurf(maillage, df_T0['T'], cmap='jet', edgecolor='none')
-ax1.set_title('Figure 11.4 : Sans résistance (T0)')
-ax1.set_zlabel('T (°C)')
-fig.colorbar(surf1, ax=ax1, shrink=0.5)
-
-# --- FIG 11.5 : T_direct (Test Manuel avec 4 résistances) ---
-ax2 = fig.add_subplot(232, projection='3d')
-surf2 = ax2.plot_trisurf(maillage, df_Tdir['T'], cmap='jet', edgecolor='none')
-ax2.set_title('Figure 11.5 : Problème Direct (α = 25 000)')
-ax2.set_zlabel('T (°C)')
-fig.colorbar(surf2, ax=ax2, shrink=0.5)
-
-# --- FIG 11.6 : Tk (Signature unitaire) ---
-ax3 = fig.add_subplot(233, projection='3d')
-surf3 = ax3.plot_trisurf(maillage, df_Tk['T'], cmap='viridis', edgecolor='none')
-ax3.set_title('Figure 11.6 : Signature d\'une résistance (Tk)')
-ax3.set_zlabel('T (Unit)')
-fig.colorbar(surf3, ax=ax3, shrink=0.5)
-
-# --- FIG 11.8 : T_optimisée (Plateau 250°C avec 4 résistances) ---
-ax4 = fig.add_subplot(234, projection='3d')
-surf4 = ax4.plot_trisurf(maillage, df_Topt['T'], cmap='jet', edgecolor='none')
-ax4.set_title('Figure 11.8 : Température Optimisée (Cible 250°C)')
-ax4.set_zlabel('T (°C)')
-ax4.set_zlim(0, 350)  # Pour bien voir le plateau
-fig.colorbar(surf4, ax=ax4, shrink=0.5)
-
-# --- FIG Comparaison : T0 vs T_optimisée ---
-ax5 = fig.add_subplot(235, projection='3d')
-diff = df_Topt['T'] - df_T0['T']
-surf5 = ax5.plot_trisurf(maillage, diff, cmap='RdYlBu_r', edgecolor='none')
-ax5.set_title('Différence : T_optimisée - T0')
-ax5.set_zlabel('ΔT (°C)')
-fig.colorbar(surf5, ax=ax5, shrink=0.5)
-
-# Ajustement de la vue pour tous les subplots
-for ax in [ax1, ax2, ax3, ax4, ax5]:
+# MODIFICATION ICI : zlim=None par défaut pour ne pas écraser les graphes
+def plot_3d(pos, data, title, cmap='jet', zlim=None):
+    ax = fig.add_subplot(pos, projection='3d')
+    ax.plot_trisurf(maillage, data, cmap=cmap, edgecolor='none')
+    ax.set_title(title, fontweight='bold')
+    if zlim: ax.set_zlim(zlim)
     ax.view_init(elev=25, azim=-45)
 
-plt.tight_layout(rect=[0, 0.03, 1, 0.95])
+# --- GRILLE DE RÉSULTATS ---
+# Échelles adaptées pour bien voir les pentes et les bosses
+plot_3d(231, df_T0['T'], '1. T0 (Base)', zlim=(0, 150))
+plot_3d(232, df_Tdir['T'], '2. T_direct (Manuel)', zlim=(0, 200))
+plot_3d(233, df_Tk['T'], '3. Tk (Signature)', cmap='viridis', zlim=None)
 
-# 5. Sauvegarde et Affichage
-chemin_save = os.path.join(dossier_img, 'Resultats_Complets_Four.png')
-plt.savefig(chemin_save, dpi=300)
-print(f"-> Rapport visuel complet sauvegardé dans '{chemin_save}'")
+# --- COMPARAISON DES DEUX OPTIMISATIONS ---
+# On fixe à 300 pour bien mettre en évidence les plateaux à 250°C
+plot_3d(234, df_Tbrut['T'], '4. T_opt (SANS pénalité)', zlim=(0, 300))
+plot_3d(235, df_Treg['T'], '5. T_opt (AVEC pénalité)', zlim=(0, 300))
 
-print("-> Ouverture de la fenêtre interactive...")
+# --- COURBE EN L POUR JUSTIFIER LE CHOIX ---
+ax6 = fig.add_subplot(236)
+ax6.loglog(df_l['residue'], df_l['norm_alpha'], 'o-b', label='Courbe en L')
+ax6.set_title('6. Sensibilité : Courbe en L', fontweight='bold')
+ax6.set_xlabel('Résidu (Erreur)')
+ax6.set_ylabel('Norme Alpha (Puissance)')
+ax6.grid(True, which="both", alpha=0.3)
+ax6.legend()
+
+plt.tight_layout()
+plt.savefig('../img/Resultats_Complets_Four.png')
+print("-> Rapport comparatif généré.")
 plt.show()

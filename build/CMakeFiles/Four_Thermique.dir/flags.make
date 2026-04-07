@@ -4,7 +4,7 @@
 # compile CXX with /usr/bin/c++
 CXX_DEFINES = 
 
-CXX_INCLUDES = -I/usr/include/eigen3
+CXX_INCLUDES = -I/usr/include/eigen3 -I/home/dev/Programmation/Four/include
 
-CXX_FLAGS =  -Wall -Wextra -O3 -std=gnu++17
+CXX_FLAGS =  -Wall -Wextra -O3 -march=native -std=gnu++17
 

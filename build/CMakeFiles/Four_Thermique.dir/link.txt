@@ -1,1 +1,1 @@
-/usr/bin/c++  -Wall -Wextra -O3 CMakeFiles/Four_Thermique.dir/src/main.cpp.o CMakeFiles/Four_Thermique.dir/src/utils_mef.cpp.o -o Four_Thermique 
+/usr/bin/c++  -Wall -Wextra -O3 -march=native CMakeFiles/Four_Thermique.dir/src/experiences.cpp.o CMakeFiles/Four_Thermique.dir/src/export.cpp.o CMakeFiles/Four_Thermique.dir/src/maillage.cpp.o CMakeFiles/Four_Thermique.dir/src/main.cpp.o CMakeFiles/Four_Thermique.dir/src/optimisation.cpp.o CMakeFiles/Four_Thermique.dir/src/solver_direct.cpp.o -o Four_Thermique 
