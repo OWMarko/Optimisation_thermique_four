@@ -1,6 +1,8 @@
 #pragma once
 #include <Eigen/Dense>
 #include <Eigen/Sparse>
+#include <vector>
+#include <string>
 
 // La structure basée sur les conventions du livre, 100% Eigen
 struct Maillage {
@@ -8,9 +10,9 @@ struct Maillage {
     int Nbtri;    // Nombre de triangles
 
     // Tableaux de données sous forme de matrices et vecteurs Eigen
-    Eigen::MatrixXd Coorneu; // Matrice des coordonnées X,Y
+    Eigen::MatrixXd Coorneu; // Matrice des coordonnées X,Y, stock tout à la suite | Contient pour chaque ligne i les coo x_0 et y_0 cartésiennes du fours
     Eigen::VectorXi Refneu;  // Vecteur des références des bords
-    Eigen::MatrixXi Numtri;  // Matrice de connectivité des triangles
+    Eigen::MatrixXi Numtri;  // Matrice de connectivité des triangles | "triangle num 5 est formé par les sommets 0 1 2", et ensuite avec Coorneu on prends les coo de ces sommets et on a les coo exacte du triangle
     Eigen::VectorXi Reftri;  // Vecteur des références des milieux (Air/Résine)
 };
 
@@ -39,6 +41,10 @@ void asst(int Nbpt, int Nbtri, const Maillage& m,
 // Dans include/utils_mef.hpp, ajoute cette ligne si elle n'y est pas :
 Eigen::VectorXd calculer_b_re(int Nbpt, int triangle_index, const Maillage& m);
 
+// Trouve l'indice du triangle le plus proche d'une coordonnée (x, y)
+int trouver_triangle_proche(const Maillage& m, double cible_x, double cible_y);
+
+
 // --- Problème Inverse (Exercice 11.2) ---
 // Calcule la matrice A_opt et le vecteur b_opt pour l'optimisation [cite: 233, 234]
 void construire_systeme_opt(int nr, int Nbtri, const Maillage& m, 
@@ -47,3 +53,36 @@ void construire_systeme_opt(int nr, int Nbtri, const Maillage& m,
                             double T_opt, 
                             Eigen::MatrixXd& A_opt, 
                             Eigen::VectorXd& b_opt);
+
+// === FONCTIONS HELPER POUR STRUCTURER LE MAIN ===
+
+// Calcule la température de base T0 sans résistances (conditions limite: T_haut=50, T_bas=100)
+Eigen::VectorXd computeBaseTemperature(const Maillage& mesh, 
+                                       const Eigen::SparseMatrix<double>& stiffness,
+                                       double T_top, double T_bottom);
+
+// Calcule les signatures thermiques Tk pour chaque résistance
+Eigen::MatrixXd computeResistanceSignatures(const Maillage& mesh,
+                                            const Eigen::SparseMatrix<double>& stiffness,
+                                            const std::vector<int>& resistor_indices);
+
+// Exporte un champ de température dans un fichier CSV
+void exportTemperatureField(const std::string& filename,
+                            const Maillage& mesh,
+                            const Eigen::VectorXd& temperature);
+
+// Exporte la géométrie du maillage
+void exportMeshGeometry(const std::string& filename, const Maillage& mesh);
+
+// Résout le problème inverse et retourne les puissances optimales
+Eigen::VectorXd solveInverseProblem(const Maillage& mesh,
+                                    const Eigen::VectorXd& T0,
+                                    const Eigen::MatrixXd& Tres,
+                                    double target_temperature);
+
+// Calcule et affiche la température moyenne de la résine
+// La résine se trouve dans la zone [-0.5, 0.5] x [-0.2, 0.2]
+// Retourne la température moyenne et affiche un diagnostic vs température cible
+double computeResinAverageTemperature(const Maillage& mesh,
+                                       const Eigen::VectorXd& temperature,
+                                       double target_temperature = 250.0);
