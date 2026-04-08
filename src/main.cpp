@@ -77,7 +77,7 @@ int main() {
 
     // ========== ÉTAPE 6 : OPTIMISATION ET COMPARAISON ==========
     std::cout << "\n RESOLUTION DU PROBLEME INVERSE\n";
-    double C = 1e-5;
+    double C = 1e-9;
     std::cout << "    -> Temperature Cible : " << T_cible << " C\n";
     std::cout << "    -> Penalite Tikhonov : C = " << C << "\n";
 
