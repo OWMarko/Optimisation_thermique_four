@@ -8,15 +8,15 @@
 #include "experiences.hpp"
 
 int main() {
-    // --- Config Affichage ---
     std::cout << std::fixed << std::setprecision(2);
 
     std::cout << "\n========================================================\n";
-    std::cout << "      PROJET R&D : OPTIMISATION THERMIQUE DU FOUR\n";
+    std::cout << "      OPTIMISATION DE LA TEMPERATURE D'UN FOUR \n";
     std::cout << "========================================================\n";
 
-    // ========== ÉTAPE 1 : MAILLAGE ==========
-    int nx = 30, ny = 30; // Maillage fin
+    // Maillage du domaine
+
+    int nx = 40, ny = 40; 
     std::cout << "\n GENERATION DU MAILLAGE\n";
     std::cout << "    -> Resolution : " << nx << "x" << ny << " elements\n";
     
@@ -24,100 +24,111 @@ int main() {
     
     std::cout << "    -> Noeuds     : " << four.Nbpt << "\n";
     std::cout << "    -> Triangles  : " << four.Nbtri << "\n";
+
     exportMeshGeometry("../data/triangles.csv", four);
 
-    // ========== ÉTAPE 2 : PHYSIQUE DU DOMAINE ==========
-    std::cout << "\n PROPRIETES PHYSIQUES ET CL\n";
-    double k_air = 1.0, k_resin = 10.0;
+    // Informations sur les propriétés physiques et conditions limites
+
+    std::cout << "\n PROPRIETES PHYSIQUES ET CONDITIONS LIMITES\n";
+    double k_air = 1.0;
+    double k_resin = 10.0;
     std::cout << "    -> Conductivite Air   : " << k_air << " W/m.K\n";
     std::cout << "    -> Conductivite Resine: " << k_resin << " W/m.K\n";
     
-    Eigen::VectorXd conductivities(3);
-    conductivities << 0.0, k_air, k_resin;
-    auto stiffness_matrix = assa(four.Nbpt, four.Nbtri, four.Coorneu, four.Refneu, 
-                                 four.Numtri, four.Reftri, conductivities);
+    Eigen::VectorXd conductivite(3); // vecteur contenant les différentes conductivités pour les éléments (0: air, 1: résine, 2: résistance)
+    conductivite << 0.0, k_air, k_resin;
 
-    double T_haut = 50.0, T_bas = 100.0;
+    auto matrice_elementaire = assa(four.Nbpt,
+                                    four.Nbtri,
+                                    four.Coorneu,
+                                    four.Refneu, 
+                                    four.Numtri,
+                                    four.Reftri,
+                                    conductivite); // matrice de rigidité globale du four
+
+    double T_haut = 50.0;
+    double T_bas = 100.0;
     std::cout << "    -> T_paroi_Haut       : " << T_haut << " C\n";
     std::cout << "    -> T_paroi_Bas        : " << T_bas << " C\n";
     
-    Eigen::VectorXd T0 = computeBaseTemperature(four, stiffness_matrix, T_haut, T_bas);
-    exportTemperatureField("../data/noeuds_T0.csv", four, T0); // Pour Fig 11.4
+    Eigen::VectorXd T0 = computeBaseTemperature(four, matrice_elementaire, T_haut, T_bas); // vecteur température de base sans résistances
+    exportTemperatureField("../data/noeuds_T0.csv", four, T0); 
 
-    // ========== ÉTAPE 3 : CONFIGURATION DES RESISTANCES ==========
+    // Ajout des résistances et calcul de leurs signatures thermiques
+
     std::cout << "\n CONFIGURATION DES RESISTANCES\n";
-    std::vector<std::pair<double, double>> pos_res = {
-        {-0.9,  0.9}, {0.0,  0.9}, {0.9,  0.9}, // Haut : Coin gauche, Bord milieu, Coin droit
-        {-0.9, -0.9}, {0.0, -0.9}, {0.9, -0.9}  // Bas  : Coin gauche, Bord milieu, Coin droit
+
+    // Positions des résistances (6 résistances : 3 en haut, 3 en bas), arbitraire mais symétrique pour tester l'optimisation
+    std::vector<std::pair<double, double>> pos_res =
+    {
+        {-0.7,  0.7}, {0.0,  0.7}, {0.7,  0.7}, // Haut : Coin gauche, Bord milieu, Coin droit
+        {-0.5, -0.5}, {0.0, -0.5}, {0.5, -0.5}  // Bas  : Coin gauche, Bord milieu, Coin droit
     };
     
+    // Pour une meilleure lisibilité, on affiche les positions et les indices des triangles où sont placées les résistances
     std::vector<int> indices;
-    for (size_t i = 0; i < pos_res.size(); ++i) {
+    for (size_t i = 0; i < pos_res.size(); ++i)
+    {
         int idx = trouver_triangle_proche(four, pos_res[i].first, pos_res[i].second);
         indices.push_back(idx);
         std::cout << "    -> Resistance " << i+1 << " : position (" << pos_res[i].first 
                   << ", " << pos_res[i].second << ") | Triangle : " << idx << "\n";
     }
 
-    Eigen::MatrixXd signatures = computeResistanceSignatures(four, stiffness_matrix, indices);
-    exportTemperatureField("../data/noeuds_Tk_1.csv", four, signatures.col(0)); // Pour Fig 11.6
+    Eigen::MatrixXd signatures = computeResistanceSignatures(four, matrice_elementaire, indices); // matrice des signatures thermiques de chaque résistance (chaque colonne correspond à une résistance)
+    exportTemperatureField("../data/noeuds_Tk_1.csv", four, signatures.col(0)); 
 
-    // ========== ÉTAPE 4 : PROBLÈME DIRECT (Le test manuel !) ==========
-    std::cout << "\n CALCUL DU PROBLEME DIRECT (Test Manuel)\n";
+    std::cout << "\n CALCUL DU PROBLEME DIRECT | TEST MANUEL \n";
     double alpha_manuel = 25000.0;
     std::cout << "    -> Puissance uniforme : " << alpha_manuel << " W\n";
-    Eigen::VectorXd T_direct = T0 + signatures * Eigen::VectorXd::Constant(indices.size(), alpha_manuel);
-    exportTemperatureField("../data/noeuds_T_direct.csv", four, T_direct); // Pour Fig 11.5
+    Eigen::VectorXd T_direct = T0 + signatures * Eigen::VectorXd::Constant(indices.size(), alpha_manuel); // vecteur température
 
-    // ========== ÉTAPE 5 : ANALYSE DE RIGUEUR (COURBE EN L) ==========
-    std::cout << "\n ANALYSE DE STABILITE (COURBE EN L)\n";
-    double T_cible = 250.0;
-    generer_courbe_L(four, T0, signatures, T_cible, "../data/l_curve.csv");
-    std::cout << "    -> Etude de sensibilite exportee dans data/l_curve.csv\n"; // Pour Fig 6
+    exportTemperatureField("../data/noeuds_T_direct.csv", four, T_direct);
 
-    // ========== ÉTAPE 6 : OPTIMISATION ET COMPARAISON ==========
+    // Résolution du problème inverse pour trouver les puissances optimales des résistances
     std::cout << "\n RESOLUTION DU PROBLEME INVERSE\n";
-    double C = 1e-9;
+    double T_cible = 250.0;
+    double C_test = 1e-9;
     std::cout << "    -> Temperature Cible : " << T_cible << " C\n";
-    std::cout << "    -> Penalite Tikhonov : C = " << C << "\n";
+    std::cout << "    -> Penalite : C = " << C_test << "\n";
 
     Eigen::VectorXd a_brut = solveInverseProblem(four, T0, signatures, T_cible);
-    Eigen::VectorXd a_reg  = solveInverseProblemPenalite(four, T0, signatures, T_cible, C);
+    Eigen::VectorXd a_pen  = solveInverseProblemPenalite(four, T0, signatures, T_cible, C_test);
 
-    // --- TABLEAU DES RÉSULTATS ---
+    // Génération de la courbe en L pour analyser la stabilité de la solution optimisée en fonction de la pénalité C 
+    std::cout << "\n ANALYSE DE STABILITE (COURBE EN L)\n";
+    generer_courbe_L(four, T0, signatures, T_cible, "../data/l_curve.csv");
+    std::cout << "    -> Etude de sensibilite exportee dans data/l_curve.csv\n";
+
+    // Résumé des résultats des puissances optimales pour chaque résistance avec et sans pénalité et notre cas manuel
     std::cout << "\n    RESULTATS DES PUISSANCES (W) :\n";
     std::cout << "    --------------------------------------------\n";
-    std::cout << "    ID  |   SANS PENALITE   |   AVEC TIKHONOV   \n";
+    std::cout << "    ID  |   SANS PENALITE   |   AVEC PENALITE  \n";
     std::cout << "    --------------------------------------------\n";
     for (size_t i = 0; i < indices.size(); ++i) {
         std::cout << "    " << i+1 << "   |   " << std::setw(13) << a_brut(i) 
-                  << "   |   " << std::setw(13) << a_reg(i) << "\n";
+                  << "   |   " << std::setw(13) << a_pen(i) << "\n";
     }
     std::cout << "    --------------------------------------------\n";
 
-    // ========== ÉTAPE 7 : VALIDATION ET EXPORT ==========
-    Eigen::VectorXd T_brut = T0 + signatures * a_brut;
-    Eigen::VectorXd T_reg  = T0 + signatures * a_reg;
+    Eigen::VectorXd T_brut = T0 + signatures * a_brut; // Vecteur température optimisée sans pénalité
+    Eigen::VectorXd T_pen  = T0 + signatures * a_pen; // Vecteur température optimisée avec pénalité
 
-    std::cout << "\n DIAGNOSTIC FINAL DE CUISSON\n";
+    std::cout << "\n RESULTATS FINAUX \n";
     
-    // 1. Diagnostic du cas manuel (T_direct)
+    // 1) Notre cas manuel avec une puissance uniforme pour toutes les résistances
     std::cout << "    --- CAS DIRECT (PUISSANCE MANUELLE = 25 000 W) ---\n";
     computeResinAverageTemperature(four, T_direct, T_cible);
 
-    // 2. Diagnostic du cas optimisé sans pénalité
+    // 2) Notre cas optimisé sans pénalité (solution brute du problème inverse)
     std::cout << "\n    --- CAS SANS PENALITE (OPTIMISE) ---\n";
     computeResinAverageTemperature(four, T_brut, T_cible);
-    exportTemperatureField("../data/noeuds_T_opt_brut.csv", four, T_brut); // Pour Fig 4
+    exportTemperatureField("../data/noeuds_T_opt_brut.csv", four, T_brut); 
 
-    // 3. Diagnostic du cas optimisé avec Tikhonov
-    std::cout << "\n    --- CAS AVEC TIKHONOV (REGULARISE) ---\n";
-    computeResinAverageTemperature(four, T_reg, T_cible);
-    exportTemperatureField("../data/noeuds_T_opt_reg.csv", four, T_reg); // Pour Fig 5
-
-    std::cout << "\n========================================================\n";
-    std::cout << "            SIMULATION TERMINEE AVEC SUCCES\n";
-    std::cout << "========================================================\n\n";
+    // 3) Notre cas optimisé avec pénalité (solution régularisée du problème inverse)
+    std::cout << "\n    --- CAS AVEC PENALITE (REGULARISE) ---\n";
+    computeResinAverageTemperature(four, T_pen, T_cible);
+    exportTemperatureField("../data/noeuds_T_opt_pen.csv", four, T_pen);
 
     return 0;
 }

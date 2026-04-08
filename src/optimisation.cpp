@@ -2,9 +2,10 @@
 #include <iostream>
 #include <cmath>
 
-// --- Résolution du problème d'optimisation (Exercice 11.2) ---
-// Version optimisée avec Eigen : plus compacte et lisible
-void construire_systeme_opt(int nr, int Nbtri, const Maillage& m, 
+// Résolution du problème d'optimisation, on cherche les valeurs des resisteurs optimales
+void construire_systeme_opt(int nr,
+                            int Nbtri,
+                            const Maillage& m, 
                             const Eigen::VectorXd& T0, 
                             const Eigen::MatrixXd& Tres, 
                             double Tcui, 
@@ -14,20 +15,21 @@ void construire_systeme_opt(int nr, int Nbtri, const Maillage& m,
     Aopt.setZero(nr, nr); 
     bopt.setZero(nr);     
 
-    // 1. Matrice de masse élémentaire (standard P1) 
+    // Matrice de masse élémentaire  
     Eigen::Matrix3d AK;
     AK << 2, 1, 1,
           1, 2, 1,
           1, 1, 2;
-    AK /= 12.0;  // SANS LE DELTA QUI EST MESK : L'AIR
+    AK /= 12.0;  
 
-    for (int k = 0; k < Nbtri; ++k) {
-        if (m.Reftri(k) == 2) { // Uniquement sur l'objet S | 'on calcule la somme uniquement sur les triangles internes à l'objet à cuire
+    for (int k = 0; k < Nbtri; ++k)
+    {
+        if (m.Reftri(k) == 2) {
             
             // Récupération des 3 indices du triangle k
             Eigen::Vector3i nodes = m.Numtri.row(k); 
             
-            // Calcul du déterminant Delta (2 * Aire)
+            // Calcul du déterminant Delta 
             double x1 = m.Coorneu(nodes(0), 0), y1 = m.Coorneu(nodes(0), 1);
             double x2 = m.Coorneu(nodes(1), 0), y2 = m.Coorneu(nodes(1), 1);
             double x3 = m.Coorneu(nodes(2), 0), y3 = m.Coorneu(nodes(2), 1);
@@ -40,8 +42,9 @@ void construire_systeme_opt(int nr, int Nbtri, const Maillage& m,
             // Écart à la cible (Tcui - T0) localement
             Eigen::Vector3d target_diff = Eigen::Vector3d::Constant(Tcui) - t0_local;
 
-            // 2. Assemblage Eigen-style
-            for (int i = 0; i < nr; ++i) {
+            // On construit A_opt et b_opt en sommant les contributions de chaque triangle pour chaque résistance
+            for (int i = 0; i < nr; ++i)
+            {
                 // Signature de la résistance i sur les 3 sommets
                 Eigen::Vector3d vi; 
                 vi << Tres(nodes(0), i), Tres(nodes(1), i), Tres(nodes(2), i);
@@ -49,18 +52,20 @@ void construire_systeme_opt(int nr, int Nbtri, const Maillage& m,
                 // Second membre b_opt (Produit scalaire via la matrice de masse)
                 bopt(i) += Delta * vi.dot(AK * target_diff); 
 
-                for (int j = 0; j < nr; ++j) {
+                for (int j = 0; j < nr; ++j)
+                {
                     // Signature de la résistance j sur les 3 sommets
                     Eigen::Vector3d vj;
                     vj << Tres(nodes(0), j), Tres(nodes(1), j), Tres(nodes(2), j);
 
-                    // Matrice A_opt (Interaction i et j) 
+                    // Matrice A_opt 
                     Aopt(i, j) += Delta * vi.dot(AK * vj); 
                 }
             }
         }
     }
 }
+
 
 Eigen::VectorXd solveInverseProblem(const Maillage& mesh,
                                     const Eigen::VectorXd& T0,
@@ -73,13 +78,13 @@ Eigen::VectorXd solveInverseProblem(const Maillage& mesh,
     Eigen::VectorXd b_opt(nr);
     construire_systeme_opt(nr, mesh.Nbtri, mesh, T0, Tres, target_temperature, A_opt, b_opt);
 
-    // Résolution du petit système (nr x nr) pour trouver les puissances optimales
+    // Résolution du système
     Eigen::VectorXd alphas = A_opt.ldlt().solve(b_opt);
 
     return alphas;
 }
 
-// --- Résolution du problème inverse AVEC régularisation de Tikhonov ---
+// Résolution du problème inverse avec pénalité 
 Eigen::VectorXd solveInverseProblemPenalite(const Maillage& mesh,
                                             const Eigen::VectorXd& T0,
                                             const Eigen::MatrixXd& Tres,
@@ -87,25 +92,26 @@ Eigen::VectorXd solveInverseProblemPenalite(const Maillage& mesh,
                                             double C) {
     int nr = Tres.cols();
 
-    // 1. Construction du système d'optimisation classique
+    // Construction du système d'optimisation
     Eigen::MatrixXd A_opt(nr, nr);
     Eigen::VectorXd b_opt(nr);
     construire_systeme_opt(nr, mesh.Nbtri, mesh, T0, Tres, target_temperature, A_opt, b_opt);
 
-    // 2. Ajout de la pénalité de Tikhonov sur la diagonale (C * I)
-    // Cela modifie la matrice A pour pénaliser les fortes variations des coefficients alpha
+    // Ajout de la pénalité sur la diagonale : (C * I)
     A_opt += C * Eigen::MatrixXd::Identity(nr, nr);
 
-    // 3. Résolution du système régularisé (nr x nr)
+    // Résolution du système
     Eigen::VectorXd alphas = A_opt.ldlt().solve(b_opt);
 
     return alphas;
 }
 
 
+// Pour évaluer la qualité de la cuisson de la résine, on calcule la température moyenne dans la zone de résine et on compare à la température cible
 double computeResinAverageTemperature(const Maillage& mesh,
                                        const Eigen::VectorXd& temperature,
                                        double target_temperature) {
+
     // Zone de la résine définie en coordonnées : [-0.5, 0.5] x [-0.2, 0.2]
     double x_min = -0.5, x_max = 0.5;
     double y_min = -0.2, y_max = 0.2;
@@ -114,13 +120,15 @@ double computeResinAverageTemperature(const Maillage& mesh,
     double sum_temperature = 0.0;
     int count_nodes = 0;
 
-    // Parcourir tous les nœuds pour trouver ceux dans la zone de résine
-    for (int i = 0; i < mesh.Nbpt; ++i) {
+    // On parcours tous les nœuds pour trouver ceux dans la zone de résine
+    for (int i = 0; i < mesh.Nbpt; ++i)
+    {
         double x = mesh.Coorneu(i, 0);
         double y = mesh.Coorneu(i, 1);
 
-        // Vérifier si le nœud est dans la zone de résine
-        if (x >= x_min && x <= x_max && y >= y_min && y <= y_max) {
+        // On vérifie si le nœud est dans la zone de résine
+        if (x >= x_min && x <= x_max && y >= y_min && y <= y_max)
+        {
             sum_temperature += temperature(i);
             count_nodes++;
         }
@@ -129,7 +137,7 @@ double computeResinAverageTemperature(const Maillage& mesh,
     // Calcul de la température moyenne
     double avg_temp = (count_nodes > 0) ? sum_temperature / count_nodes : 0.0;
 
-    // === AFFICHAGE DU DIAGNOSTIC ===
+    // Affichage des résultats
     std::cout << "\n========================================\n";
     std::cout << "  VERIFICATION CUISSON DE LA RESINE\n";
     std::cout << "========================================\n";
@@ -139,19 +147,19 @@ double computeResinAverageTemperature(const Maillage& mesh,
     std::cout << "Température cible    : " << target_temperature << "°C\n";
     std::cout << "Écart                : " << (avg_temp - target_temperature) << "°C\n";
 
-    // Diagnostic de qualité
-    double tolerance = 5.0;  // Tolérance acceptable ±5°C
+    // Tolérance
+    double tolerance = 2.0;
     double error_percent = std::abs(avg_temp - target_temperature) / target_temperature * 100.0;
 
     std::cout << "\n  Diagnostic : ";
     if (std::abs(avg_temp - target_temperature) < tolerance) {
-        std::cout << "✓ EXCELLENTE - Cuisson optimale!\n";
+        std::cout << "Cuisson optimale!\n";
     } else if (error_percent < 10.0) {
-        std::cout << "✓ BON - Cuisson acceptable\n";
+        std::cout << "Cuisson acceptable\n";
     } else if (avg_temp < target_temperature) {
-        std::cout << "⚠ INSUFFISANT - Augmenter la puissance des résistances\n";
+        std::cout << "Augmenter la puissance des résistances\n";
     } else {
-        std::cout << "⚠ EXCESSIF - Diminuer la puissance des résistances\n";
+        std::cout << "Diminuer la puissance des résistances\n";
     }
     std::cout << "========================================\n\n";
 

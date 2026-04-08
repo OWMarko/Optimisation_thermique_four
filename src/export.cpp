@@ -3,7 +3,7 @@
 
 void exportTemperatureField(const std::string& filename,
                             const Maillage& mesh,
-                            const Eigen::VectorXd& temperature) {
+                            const Eigen::VectorXd& temperature){
     std::ofstream file(filename);
     file << "x,y,T\n";
     for (int i = 0; i < mesh.Nbpt; ++i) {

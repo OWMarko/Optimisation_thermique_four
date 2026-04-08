@@ -8,13 +8,13 @@ import numpy as np
 
 if not os.path.exists('../img'): os.makedirs('../img')
 
-# 1. Lecture des données (Assure-toi que le C++ exporte bien ces deux fichiers)
+# 1. Lecture des données 
 print("-> Lecture des données...")
 df_T0      = pd.read_csv('../data/noeuds_T0.csv')
 df_Tdir    = pd.read_csv('../data/noeuds_T_direct.csv')
 df_Tk      = pd.read_csv('../data/noeuds_Tk_1.csv')
-df_Tbrut   = pd.read_csv('../data/noeuds_T_opt_brut.csv') # Sans pénalité
-df_Treg    = pd.read_csv('../data/noeuds_T_opt_reg.csv')  # Avec pénalité
+df_Tbrut   = pd.read_csv('../data/noeuds_T_opt_brut.csv')  # Sans pénalité
+df_Tpen    = pd.read_csv('../data/noeuds_T_opt_pen.csv')   # Avec pénalité C=1e-9
 df_l       = pd.read_csv('../data/l_curve.csv')
 triangles  = pd.read_csv('../data/triangles.csv')
 
@@ -40,7 +40,7 @@ plot_3d(233, df_Tk['T'], '3. Tk (Signature)', cmap='viridis', zlim=None)
 # --- COMPARAISON DES DEUX OPTIMISATIONS ---
 # On fixe à 300 pour bien mettre en évidence les plateaux à 250°C
 plot_3d(234, df_Tbrut['T'], '4. T_opt (SANS pénalité)', zlim=(0, 300))
-plot_3d(235, df_Treg['T'], '5. T_opt (AVEC pénalité)', zlim=(0, 300))
+plot_3d(235, df_Tpen['T'], '5. T_opt (AVEC pénalité)', zlim=(0, 300))
 
 # --- COURBE EN L POUR JUSTIFIER LE CHOIX ---
 ax6 = fig.add_subplot(236)
