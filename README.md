@@ -82,5 +82,7 @@ Vous pouvez déplacer ou ajouter des résistances en modifiant le vecteur de coo
 Vous retrouverez à la racine du projet :
 * `Recherche.pdf` : Document détaillé présentant les travaux de recherche, le détail des calculs et la formulation mathématique du problème.
 * `Slides.pdf` : Présentation synthétique du projet pour l'oral.
+* `Projet.pdf` : Sujet du projet.
+
 
 
