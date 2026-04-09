@@ -1,3 +1,0 @@
-/home/dev/Programmation/Four/build/CMakeFiles/Four_Thermique.dir
-/home/dev/Programmation/Four/build/CMakeFiles/edit_cache.dir
-/home/dev/Programmation/Four/build/CMakeFiles/rebuild_cache.dir

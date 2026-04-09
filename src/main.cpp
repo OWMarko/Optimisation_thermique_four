@@ -10,14 +10,11 @@
 int main() {
     std::cout << std::fixed << std::setprecision(2);
 
-    std::cout << "\n========================================================\n";
     std::cout << "      OPTIMISATION DE LA TEMPERATURE D'UN FOUR \n";
-    std::cout << "========================================================\n";
 
     // Maillage du domaine
-
     int nx = 40, ny = 40; 
-    std::cout << "\n GENERATION DU MAILLAGE\n";
+    std::cout << "\n MAILLAGE : \n";
     std::cout << "    -> Resolution : " << nx << "x" << ny << " elements\n";
     
     Maillage four = creer_maillage(nx, ny);
@@ -35,7 +32,7 @@ int main() {
     std::cout << "    -> Conductivite Air   : " << k_air << " W/m.K\n";
     std::cout << "    -> Conductivite Resine: " << k_resin << " W/m.K\n";
     
-    Eigen::VectorXd conductivite(3); // vecteur contenant les différentes conductivités pour les éléments (0: air, 1: résine, 2: résistance)
+    Eigen::VectorXd conductivite(3); // vecteur contenant les différentes conductivités pour les éléments (0 air, 1 résine, 2 résistance)
     conductivite << 0.0, k_air, k_resin;
 
     auto matrice_elementaire = assa(four.Nbpt,
@@ -54,18 +51,16 @@ int main() {
     Eigen::VectorXd T0 = computeBaseTemperature(four, matrice_elementaire, T_haut, T_bas); // vecteur température de base sans résistances
     exportTemperatureField("../data/noeuds_T0.csv", four, T0); 
 
-    // Ajout des résistances et calcul de leurs signatures thermiques
-
     std::cout << "\n CONFIGURATION DES RESISTANCES\n";
 
     // Positions des résistances (6 résistances : 3 en haut, 3 en bas), arbitraire mais symétrique pour tester l'optimisation
     std::vector<std::pair<double, double>> pos_res =
     {
-        {-0.7,  0.7}, {0.0,  0.7}, {0.7,  0.7}, // Haut : Coin gauche, Bord milieu, Coin droit
-        {-0.5, -0.5}, {0.0, -0.5}, {0.5, -0.5}  // Bas  : Coin gauche, Bord milieu, Coin droit
+        {-0.7,  0.7}, {0.0,  0.7}, {0.7,  0.7}, // Haut : Coin gauche Bord milieu Coin droit
+        {-0.5, -0.5}, {0.0, -0.5}  // Bas  : Coin gauche Bord milieu Coin droit
     };
     
-    // Pour une meilleure lisibilité, on affiche les positions et les indices des triangles où sont placées les résistances
+    // Pour une meilleure lisibilité on affiche les positions et les indices des triangles où sont placées les résistances
     std::vector<int> indices;
     for (size_t i = 0; i < pos_res.size(); ++i)
     {
@@ -79,7 +74,7 @@ int main() {
     exportTemperatureField("../data/noeuds_Tk_1.csv", four, signatures.col(0)); 
 
     std::cout << "\n CALCUL DU PROBLEME DIRECT | TEST MANUEL \n";
-    double alpha_manuel = 25000.0;
+    double alpha_manuel = 200000.0;
     std::cout << "    -> Puissance uniforme : " << alpha_manuel << " W\n";
     Eigen::VectorXd T_direct = T0 + signatures * Eigen::VectorXd::Constant(indices.size(), alpha_manuel); // vecteur température
 
@@ -88,7 +83,7 @@ int main() {
     // Résolution du problème inverse pour trouver les puissances optimales des résistances
     std::cout << "\n RESOLUTION DU PROBLEME INVERSE\n";
     double T_cible = 250.0;
-    double C_test = 1e-9;
+    double C_test = 1e-9; // C pénalité à modifier pour tester 
     std::cout << "    -> Temperature Cible : " << T_cible << " C\n";
     std::cout << "    -> Penalite : C = " << C_test << "\n";
 
@@ -96,7 +91,7 @@ int main() {
     Eigen::VectorXd a_pen  = solveInverseProblemPenalite(four, T0, signatures, T_cible, C_test);
 
     // Génération de la courbe en L pour analyser la stabilité de la solution optimisée en fonction de la pénalité C 
-    std::cout << "\n ANALYSE DE STABILITE (COURBE EN L)\n";
+    std::cout << "\n COURBE EN L\n";
     generer_courbe_L(four, T0, signatures, T_cible, "../data/l_curve.csv");
     std::cout << "    -> Etude de sensibilite exportee dans data/l_curve.csv\n";
 

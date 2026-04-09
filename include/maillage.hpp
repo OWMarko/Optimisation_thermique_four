@@ -10,9 +10,9 @@ struct Maillage {
 
     // Tableaux de données sous forme de matrices et vecteurs Eigen
     Eigen::MatrixXd Coorneu; // Matrice des coordonnées des sommets (Nbpt * 2) | Coorneu(0,0) = x du sommet 0, Coorneu(0,1) = y du sommet 0,
-    Eigen::VectorXi Refneu;  // Vecteur des références des sommets (pour les conditions limites, 0 = intérieur, 1 = bord haut, 2 = bord bas)
-    Eigen::MatrixXi Numtri;  // Matrice des indices des sommets pour chaque triangle (Nbtri * 3) | Numtri(0,0) = indice du sommet 1 du triangle 0, etc.
-    Eigen::VectorXi Reftri;  // Vecteur des références des milieux (Air/Résine)
+    Eigen::VectorXi Refneu; // Vecteur des références des sommets (pour les conditions limites, 0 = intérieur, 1 = bord haut, 2 = bord bas)
+    Eigen::MatrixXi Numtri; // Matrice des indices des sommets pour chaque triangle (Nbtri * 3) | Numtri(0,0) = indice du sommet 1 du triangle 0, etc.
+    Eigen::VectorXi Reftri; // Vecteur des références des milieux (Air/Résine)
 };
 
 // Fonction pour créer le maillage du four, avec les étiquetages des bords et des matériaux

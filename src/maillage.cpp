@@ -3,7 +3,8 @@
 #include <cmath>
 #include <iostream>
 
-Maillage creer_maillage(int Nx, int Ny) {
+Maillage creer_maillage(int Nx,
+                        int Ny) {
     Maillage m;
     
     // Dimensions du four : carré de -1 à 1
@@ -99,7 +100,9 @@ Maillage creer_maillage(int Nx, int Ny) {
 }
 
 // Fonction pour trouver le triangle le plus proche d'une coordonnée (x, y)
-int trouver_triangle_proche(const Maillage& m, double cible_x, double cible_y) {
+int trouver_triangle_proche(const Maillage& m,
+                            double cible_x,
+                            double cible_y) {
     int meilleur_triangle = 0;
     double distance_min = 1e15; 
 

@@ -24,7 +24,8 @@ void construire_systeme_opt(int nr,
 
     for (int k = 0; k < Nbtri; ++k)
     {
-        if (m.Reftri(k) == 2) {
+        if (m.Reftri(k) == 2)
+        {
             
             // Récupération des 3 indices du triangle k
             Eigen::Vector3i nodes = m.Numtri.row(k); 
@@ -152,16 +153,22 @@ double computeResinAverageTemperature(const Maillage& mesh,
     double error_percent = std::abs(avg_temp - target_temperature) / target_temperature * 100.0;
 
     std::cout << "\n  Diagnostic : ";
-    if (std::abs(avg_temp - target_temperature) < tolerance) {
+    if (std::abs(avg_temp - target_temperature) < tolerance)
+    {
         std::cout << "Cuisson optimale!\n";
-    } else if (error_percent < 10.0) {
+    } 
+    else if (error_percent < 10.0)
+    {
         std::cout << "Cuisson acceptable\n";
-    } else if (avg_temp < target_temperature) {
+    }
+    else if (avg_temp < target_temperature)
+    {
         std::cout << "Augmenter la puissance des résistances\n";
-    } else {
+    }
+    else
+    {
         std::cout << "Diminuer la puissance des résistances\n";
     }
-    std::cout << "========================================\n\n";
 
     return avg_temp;
 }
