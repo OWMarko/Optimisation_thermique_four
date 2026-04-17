@@ -1,3 +1,5 @@
+# Thermique : Optimisation de la température d'un four
+
 Ce projet vise à résoudre l'équation de la chaleur en deux dimensions par la méthode des Éléments Finis. Nous résolvons :
  
 1. Problème direct : Calculer le champ de température dans un four contenant différentes zones matérielles et des résistances chauffantes.
